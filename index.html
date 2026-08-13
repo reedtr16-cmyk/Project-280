@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Chart Library</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1f1f1f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  :root{
+    --ink:#1f1f1f;
+    --paper:#fffdf9;
+    --line:rgba(0,0,0,0.12);
+    --accent:#256c94;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    background:var(--paper);
+    color:var(--ink);
+    padding-bottom:90px;
+  }
+  header{
+    position:sticky; top:0; z-index:10;
+    background:var(--paper);
+    border-bottom:1px solid var(--line);
+    padding:14px 16px 10px;
+  }
+  h1{ font-size:19px; margin:0 0 10px; letter-spacing:-0.3px; }
+  #search{
+    width:100%;
+    padding:11px 14px;
+    font-size:15px;
+    border:1.5px solid var(--line);
+    border-radius:10px;
+    outline:none;
+  }
+  #search:focus{ border-color:var(--accent); }
+  #tagBar{
+    display:flex; gap:6px; flex-wrap:wrap;
+    margin-top:10px;
+  }
+  .tag-btn{
+    font-size:12px; padding:5px 10px; border-radius:999px;
+    border:1px solid var(--line); background:#fff; cursor:pointer;
+    color:var(--ink);
+  }
+  .tag-btn.active{ background:var(--ink); color:#fff !important; border-color:var(--ink); }
+  #status{ font-size:12px; color:#888; padding:8px 16px 0; }
+  #list{ padding:10px 12px; }
+  .card{
+    background:#fff;
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:12px 14px;
+    margin-bottom:10px;
+    cursor:pointer;
+  }
+  .card:active{ background:#f5f4ef; }
+  .card-title{ font-weight:700; font-size:15px; margin-bottom:4px; }
+  .card-tags{ display:flex; gap:5px; flex-wrap:wrap; }
+  .chip{
+    font-size:10.5px; padding:2px 8px; border-radius:999px;
+    background:#eef0e8; color:#444 !important;
+  }
+  .card-meta{ font-size:11px; color:#999; margin-top:5px; }
+  #empty{ text-align:center; color:#999; padding:40px 20px; font-size:14px; }
+
+  #fab{
+    position:fixed; right:18px; bottom:22px;
+    width:56px; height:56px; border-radius:50%;
+    background:var(--accent); color:#fff !important;
+    border:none; font-size:28px; line-height:56px; text-align:center;
+    box-shadow:0 4px 14px rgba(0,0,0,0.25);
+    cursor:pointer;
+  }
+
+  #addModal, #viewModal{
+    display:none;
+    position:fixed; inset:0; background:var(--paper);
+    z-index:100; overflow-y:auto;
+  }
+  .modal-header{
+    position:sticky; top:0; background:var(--paper);
+    border-bottom:1px solid var(--line);
+    padding:14px 16px; display:flex; justify-content:space-between; align-items:center;
+  }
+  .modal-header h2{ font-size:16px; margin:0; }
+  .close-btn{
+    border:none; background:none; font-size:22px; cursor:pointer; color:var(--ink) !important;
+    padding:0 4px;
+  }
+  .modal-body{ padding:16px; }
+  label{ display:block; font-size:12px; font-weight:700; margin:14px 0 5px; color:#555 !important; }
+  input[type=text], textarea{
+    width:100%; padding:10px 12px; font-size:14px;
+    border:1.5px solid var(--line); border-radius:8px; font-family:inherit;
+  }
+  textarea{ min-height:160px; font-family:monospace; font-size:11px; resize:vertical; }
+  .hint{ font-size:11px; color:#888 !important; margin-top:4px; }
+  #saveBtn{
+    width:100%; margin-top:20px; padding:13px;
+    background:var(--accent); color:#fff !important; border:none;
+    border-radius:10px; font-size:15px; font-weight:700; cursor:pointer;
+  }
+  #saveBtn:disabled{ opacity:0.5; }
+  #saveMsg{ text-align:center; font-size:13px; margin-top:10px; color:#c1631a !important; }
+
+  #viewFrame{ width:100%; height:calc(100vh - 54px); border:none; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>📚 Chart Library</h1>
+  <input id="search" type="text" placeholder="Search charts (e.g. HELLP, sympatholytics)...">
+  <div id="tagBar"></div>
+</header>
+
+<div id="status">Connecting…</div>
+<div id="list"></div>
+<div id="empty" style="display:none;">No charts yet — tap + to add the first one.</div>
+
+<button id="fab" onclick="openAdd()">+</button>
+
+<!-- Add Chart Modal -->
+<div id="addModal">
+  <div class="modal-header">
+    <h2>Add Chart</h2>
+    <button class="close-btn" onclick="closeAdd()">✕</button>
+  </div>
+  <div class="modal-body">
+    <label>Title</label>
+    <input id="f_title" type="text" placeholder="e.g. Hypertensive Pregnancy Disorders">
+
+    <label>Tags (comma-separated)</label>
+    <input id="f_tags" type="text" placeholder="e.g. OB, Cardio, Pharm">
+    <div class="hint">Used for filtering — keep them short and consistent (e.g. always "Pharm" not sometimes "Pharmacology").</div>
+
+    <label>Chart HTML</label>
+    <textarea id="f_html" placeholder="Paste the full HTML content of the chart here"></textarea>
+    <div class="hint">Paste the entire contents of the chart's .html file.</div>
+
+    <label>Your name (optional)</label>
+    <input id="f_author" type="text" placeholder="e.g. Reed">
+
+    <button id="saveBtn" onclick="saveChart()">Save Chart</button>
+    <div id="saveMsg"></div>
+  </div>
+</div>
+
+<!-- View Chart Modal -->
+<div id="viewModal">
+  <div class="modal-header">
+    <h2 id="viewTitle"></h2>
+    <button class="close-btn" onclick="closeView()">✕</button>
+  </div>
+  <iframe id="viewFrame" sandbox="allow-same-origin"></iframe>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
